@@ -1,132 +1,98 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 2,
-   "id": "9c61cdb4-b845-4e86-aaa5-b28c11630948",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import streamlit as st\n",
-    "import pandas as pd\n",
-    "import joblib\n",
-    "from io import StringIO\n",
-    "import os\n",
-    "\n",
-    "# Path to model file\n",
-    "MODEL_PATH = \"models/churn_pipeline.pkl\"  # Adjust as needed\n",
-    "\n",
-    "@st.cache_resource\n",
-    "def load_model():\n",
-    "    \"\"\"Load the trained model from disk.\"\"\"\n",
-    "    if not os.path.exists(MODEL_PATH):\n",
-    "        st.error(f\"Model file not found: {MODEL_PATH}\")\n",
-    "        st.stop()\n",
-    "    try:\n",
-    "        model = joblib.load(MODEL_PATH)\n",
-    "    except Exception as e:\n",
-    "        st.error(f\"Error loading model: {e}\")\n",
-    "        st.stop()\n",
-    "\n",
-    "    if not hasattr(model, \"feature_names_in_\"):\n",
-    "        st.error(\"Model does not contain feature name metadata. Cannot auto-generate form.\")\n",
-    "        st.stop()\n",
-    "\n",
-    "    return model\n",
-    "\n",
-    "# Single input form (generated from model's feature names)\n",
-    "def single_input_form(feature_names):\n",
-    "    st.subheader(\"Single Prediction Input\")\n",
-    "    input_data = {}\n",
-    "    for feat in feature_names:\n",
-    "        input_data[feat] = st.text_input(feat, value=\"\")\n",
-    "    return input_data\n",
-    "\n",
-    "# Prediction functions\n",
-    "def predict_single(model, row):\n",
-    "    df = pd.DataFrame([row])\n",
-    "    return model.predict(df)[0]\n",
-    "\n",
-    "def predict_batch(model, df):\n",
-    "    preds = model.predict(df)\n",
-    "    df[\"prediction\"] = preds\n",
-    "    return df\n",
-    "\n",
-    "# Main app\n",
-    "def main():\n",
-    "    st.title(\"ML Pipeline Prediction App\")\n",
-    "\n",
-    "    model = load_model()\n",
-    "    feature_names = list(model.feature_names_in_)\n",
-    "\n",
-    "    tab1, tab2 = st.tabs([\"Single Input\", \"Batch CSV Upload\"])\n",
-    "\n",
-    "    # Single Prediction\n",
-    "    with tab1:\n",
-    "        row = single_input_form(feature_names)\n",
-    "        if st.button(\"Predict Single\"):\n",
-    "            try:\n",
-    "                df_row = pd.DataFrame([row])\n",
-    "                # Convert to numeric where possible\n",
-    "                for col in df_row.columns:\n",
-    "                    df_row[col] = pd.to_numeric(df_row[col], errors=\"ignore\")\n",
-    "                result = predict_single(model, df_row.iloc[0])\n",
-    "                st.success(f\"Prediction: {result}\")\n",
-    "            except Exception as e:\n",
-    "                st.error(f\"Prediction failed: {e}\")\n",
-    "\n",
-    "    # Batch Prediction\n",
-    "    with tab2:\n",
-    "        st.subheader(\"Upload CSV for Batch Predictions\")\n",
-    "        st.caption(f\"Required columns: {feature_names}\")\n",
-    "        uploaded_file = st.file_uploader(\"Choose CSV file\", type=\"csv\")\n",
-    "\n",
-    "        if uploaded_file is not None:\n",
-    "            try:\n",
-    "                df = pd.read_csv(uploaded_file)\n",
-    "                missing_cols = [col for col in feature_names if col not in df.columns]\n",
-    "\n",
-    "                if missing_cols:\n",
-    "                    st.error(f\"Missing columns: {missing_cols}\")\n",
-    "                else:\n",
-    "                    result_df = predict_batch(model, df)\n",
-    "                    st.dataframe(result_df)\n",
-    "\n",
-    "                    csv_buf = StringIO()\n",
-    "                    result_df.to_csv(csv_buf, index=False)\n",
-    "                    st.download_button(\n",
-    "                        \"Download Predictions\",\n",
-    "                        data=csv_buf.getvalue(),\n",
-    "                        file_name=\"predictions.csv\",\n",
-    "                        mime=\"text/csv\"\n",
-    "                    )\n",
-    "            except Exception as e:\n",
-    "                st.error(f\"Batch prediction failed: {e}\")\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "    main()\n"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python (shopgenie)",
-   "language": "python",
-   "name": "shopgenie"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.10.9"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import streamlit as st
+import pandas as pd
+import joblib
+from io import StringIO
+import os
+
+# Path to model file
+MODEL_PATH = "models/churn_pipeline.pkl"  # Adjust as needed
+
+@st.cache_resource
+def load_model():
+    """Load the trained model from disk."""
+    if not os.path.exists(MODEL_PATH):
+        st.error(f"Model file not found: {MODEL_PATH}")
+        st.stop()
+    try:
+        model = joblib.load(MODEL_PATH)
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        st.stop()
+
+    if not hasattr(model, "feature_names_in_"):
+        st.error("Model does not contain feature name metadata. Cannot auto-generate form.")
+        st.stop()
+
+    return model
+
+# Single input form (generated from model's feature names)
+def single_input_form(feature_names):
+    st.subheader("Single Prediction Input")
+    input_data = {}
+    for feat in feature_names:
+        input_data[feat] = st.text_input(feat, value="")
+    return input_data
+
+# Prediction functions
+def predict_single(model, row):
+    df = pd.DataFrame([row])
+    return model.predict(df)[0]
+
+def predict_batch(model, df):
+    preds = model.predict(df)
+    df["prediction"] = preds
+    return df
+
+# Main app
+def main():
+    st.title("ML Pipeline Prediction App")
+
+    model = load_model()
+    feature_names = list(model.feature_names_in_)
+
+    tab1, tab2 = st.tabs(["Single Input", "Batch CSV Upload"])
+
+    # Single Prediction
+    with tab1:
+        row = single_input_form(feature_names)
+        if st.button("Predict Single"):
+            try:
+                df_row = pd.DataFrame([row])
+                # Convert to numeric where possible
+                for col in df_row.columns:
+                    df_row[col] = pd.to_numeric(df_row[col], errors="ignore")
+                result = predict_single(model, df_row.iloc[0])
+                st.success(f"Prediction: {result}")
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+
+    # Batch Prediction
+    with tab2:
+        st.subheader("Upload CSV for Batch Predictions")
+        st.caption(f"Required columns: {feature_names}")
+        uploaded_file = st.file_uploader("Choose CSV file", type="csv")
+
+        if uploaded_file is not None:
+            try:
+                df = pd.read_csv(uploaded_file)
+                missing_cols = [col for col in feature_names if col not in df.columns]
+
+                if missing_cols:
+                    st.error(f"Missing columns: {missing_cols}")
+                else:
+                    result_df = predict_batch(model, df)
+                    st.dataframe(result_df)
+
+                    csv_buf = StringIO()
+                    result_df.to_csv(csv_buf, index=False)
+                    st.download_button(
+                        "Download Predictions",
+                        data=csv_buf.getvalue(),
+                        file_name="predictions.csv",
+                        mime="text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Batch prediction failed: {e}")
+
+if __name__ == "__main__":
+    main()
